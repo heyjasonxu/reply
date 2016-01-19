@@ -1,11 +1,19 @@
 var rl, readline = require('readline');
 
+/**
+ * Set up user input interface from "readline" module
+ */
 var get_interface = function(stdin, stdout) {
   if (!rl) rl = readline.createInterface(stdin, stdout);
   else stdin.resume(); // interface exists
   return rl;
 }
 
+/**
+ * Prints a yes/no question, then receives user input.
+ * @message Question printed.
+ * @callback Function that runs after question.
+ */
 var confirm = exports.confirm = function(message, callback) {
 
   var question = {
@@ -15,7 +23,7 @@ var confirm = exports.confirm = function(message, callback) {
       default: 'yes'
     }
   }
-
+  
   get(question, function(err, answer) {
     if (err) return callback(err);
     callback(null, answer.reply === true || answer.reply == 'yes');
@@ -23,10 +31,15 @@ var confirm = exports.confirm = function(message, callback) {
 
 };
 
+/**
+ * Asks a series of questions, followed by user input to generate a
+ * @options Contains questions, and properties for each question.
+ * @callback Function that runs after each question is answered.
+ */
 var get = exports.get = function(options, callback) {
-
+  //callback function is undefined
   if (!callback) return; // no point in continuing
-
+  
   if (typeof options != 'object')
     return callback(new Error("Please pass a valid options object."))
 
@@ -47,6 +60,7 @@ var get = exports.get = function(options, callback) {
     rl = null;
   }
 
+  //selects message from options
   var get_default = function(key, partial_answers) {
     if (typeof options[key] == 'object')
       return typeof options[key].default == 'function' ? options[key].default(partial_answers) : options[key].default;
@@ -54,20 +68,25 @@ var get = exports.get = function(options, callback) {
       return options[key];
   }
 
+  //deciphers the reply of question.
   var guess_type = function(reply) {
 
     if (reply.trim() == '')
       return;
+    //reply is true/yess  
     else if (reply.match(/^(true|y(es)?)$/))
       return true;
+    //reply is false/no  
     else if (reply.match(/^(false|n(o)?)$/))
       return false;
+    //reply is string  
     else if ((reply*1).toString() === reply)
       return reply*1;
 
     return reply;
   }
 
+  //checks if reply is correct type
   var validate = function(key, answer) {
 
     if (typeof answer == 'undefined')
@@ -85,6 +104,7 @@ var get = exports.get = function(options, callback) {
 
   }
 
+  //check if reply meets requirements.
   var show_error = function(key) {
     var str = options[key].error ? options[key].error : 'Invalid value.';
 
@@ -94,12 +114,16 @@ var get = exports.get = function(options, callback) {
     stdout.write("\033[31m" + str + "\033[0m" + "\n");
   }
 
+  // prints message/question
   var show_message = function(key) {
+    //initial msg
     var msg = '';
 
+    //adds additional information to message if message variable exists
     if (text = options[key].message)
       msg += text.trim() + ' ';
 
+    //add additional information to message if options variable exists
     if (options[key].options)
       msg += '(options are ' + options[key].options.join(', ') + ')';
 
@@ -107,6 +131,7 @@ var get = exports.get = function(options, callback) {
   }
 
   // taken from commander lib
+  // recieves input for passwords
   var wait_for_password = function(prompt, callback) {
 
     var buf = '',
@@ -127,6 +152,7 @@ var get = exports.get = function(options, callback) {
       if (key && key.name == 'backspace') {
         buf = buf.substr(0, buf.length-1);
         var masked = '';
+        //make sure password is hidden
         for (i = 0; i < buf.length; i++) { masked += mask; }
         stdout.write('\r\033[2K' + prompt + masked);
       } else {
@@ -139,6 +165,7 @@ var get = exports.get = function(options, callback) {
     stdin.on('keypress', keypress_callback);
   }
 
+  //checks if reply is valid
   var check_reply = function(index, curr_key, fallback, reply) {
     var answer = guess_type(reply);
     var return_answer = (typeof answer != 'undefined') ? answer : fallback;
@@ -149,6 +176,7 @@ var get = exports.get = function(options, callback) {
       show_error(curr_key) || next_question(index); // repeats current
   }
 
+  //check if reply meets dependencies
   var dependencies_met = function(conds) {
     for (var key in conds) {
       var cond = conds[key];
@@ -167,12 +195,14 @@ var get = exports.get = function(options, callback) {
     return true;
   }
 
+  //asks next question
   var next_question = function(index, prev_key, answer) {
     if (prev_key) answers[prev_key] = answer;
 
     var curr_key = fields[index];
     if (!curr_key) return done();
 
+    //if there are dependencies
     if (options[curr_key].depends_on) {
       if (!dependencies_met(options[curr_key].depends_on))
         return next_question(++index, curr_key, undefined);
@@ -181,12 +211,14 @@ var get = exports.get = function(options, callback) {
     var prompt = (options[curr_key].type == 'confirm') ?
       ' - yes/no: ' : " - " + curr_key + ": ";
 
+    //no answer was given
     var fallback = get_default(curr_key, answers);
     if (typeof(fallback) != 'undefined' && fallback !== '')
       prompt += "[" + fallback + "] ";
 
     show_message(curr_key);
 
+    //asks for password
     if (options[curr_key].type == 'password') {
 
       var listener = stdin._events.keypress; // to reassign down later
