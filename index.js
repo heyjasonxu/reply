@@ -35,7 +35,7 @@ var confirm = exports.confirm = function(message, callback) {
 
 
 /**
- * Asks a series of questions, followed by user input to generate a
+ * Asks a series of questions, followed by user input to generate desired oiutput
  * @options Contains questions/messages, and properties for each.
  * @callback procedures after reply is received.
  * @function get
